@@ -15,6 +15,7 @@ m_bMouseEnabled(true),
 m_bKeyboardEnabled(true),
 m_bFloat(false),
 m_bSetPos(false),
+m_bResourceText(false),
 m_chShortcut('\0'),
 m_pTag(NULL),
 m_dwBackColor(0),
@@ -59,7 +60,7 @@ void CControlUI::SetName(LPCTSTR pstrName)
 
 LPVOID CControlUI::GetInterface(LPCTSTR pstrName)
 {
-    if( _tcscmp(pstrName, DUI_CTR_CONTROL) == 0 ) return this;
+    if( _tcsicmp(pstrName, DUI_CTR_CONTROL) == 0 ) return this;
     return NULL;
 }
 
@@ -113,7 +114,9 @@ void CControlUI::KillTimer(UINT nTimerID)
 
 CDuiString CControlUI::GetText() const
 {
-    return m_sText;
+	if (!IsResourceText()) 
+		return m_sText;
+	return CResourceManager::GetInstance()->GetText(m_sText);
 }
 
 void CControlUI::SetText(LPCTSTR pstrText)
@@ -122,6 +125,18 @@ void CControlUI::SetText(LPCTSTR pstrText)
 
     m_sText = pstrText;
     Invalidate();
+}
+
+bool CControlUI::IsResourceText() const
+{
+	return m_bResourceText;
+}
+
+void CControlUI::SetResourceText(bool bResource)
+{
+	if( m_bResourceText == bResource ) return;
+	m_bResourceText = bResource;
+	Invalidate();
 }
 
 DWORD CControlUI::GetBkColor() const
@@ -247,7 +262,7 @@ void CControlUI::SetBorderRound(SIZE cxyRound)
 
 bool CControlUI::DrawImage(HDC hDC, LPCTSTR pStrImage, LPCTSTR pStrModify)
 {
-    return CRenderEngine::DrawImageString(hDC, m_pManager, m_rcItem, m_rcPaint, pStrImage, pStrModify);
+    return CRenderEngine::DrawImageString(hDC, m_pManager, m_rcItem, m_rcPaint, pStrImage, pStrModify, m_instance);
 }
 
 const RECT& CControlUI::GetPos() const
@@ -263,26 +278,28 @@ void CControlUI::SetPos(RECT rc, bool bNeedInvalidate)
     CDuiRect invalidateRc = m_rcItem;
     if( ::IsRectEmpty(&invalidateRc) ) invalidateRc = rc;
 
+	m_rcItem = rc;
+
 	if( m_bFloat ) {
 		CControlUI* pParent = GetParent();
 		if( pParent != NULL ) {
 			RECT rcParentPos = pParent->GetPos();
-			RECT rcCtrl = {rcParentPos.left + rc.left, rcParentPos.top + rc.top, 
-				rcParentPos.left + rc.right, rcParentPos.top + rc.bottom};
-			m_rcItem = rcCtrl;
-
 			LONG width = rcParentPos.right - rcParentPos.left;
 			LONG height = rcParentPos.bottom - rcParentPos.top;
+			
+			m_rcItem.left = m_cXY.cx + rcParentPos.left;
+			m_rcItem.top = m_cXY.cy + rcParentPos.top;
+			m_rcItem.right = m_rcItem.left + m_cxyFixed.cx;
+			m_rcItem.bottom = m_rcItem.top + m_cxyFixed.cy;
+
 			RECT rcPercent = {(LONG)(width*m_piFloatPercent.left), (LONG)(height*m_piFloatPercent.top),
 				(LONG)(width*m_piFloatPercent.right), (LONG)(height*m_piFloatPercent.bottom)};
-			m_cXY.cx = rc.left - rcPercent.left;
-			m_cXY.cy = rc.top - rcPercent.top;
-			m_cxyFixed.cx = rc.right - rcPercent.right - m_cXY.cx;
-			m_cxyFixed.cy = rc.bottom - rcPercent.bottom - m_cXY.cy;
+
+			m_rcItem.left += rcPercent.left;
+			m_rcItem.top += rcPercent.top;
+			m_rcItem.right -= rcPercent.right;
+			m_rcItem.bottom -= rcPercent.bottom;
 		}
-	}
-	else {
-		m_rcItem = rc;
 	}
     if( m_pManager == NULL ) return;
 
@@ -307,6 +324,13 @@ void CControlUI::SetPos(RECT rc, bool bNeedInvalidate)
 		}
 		m_pManager->Invalidate(invalidateRc);
 	}
+}
+
+void CControlUI::Move(SIZE szOffset, bool bNeedInvalidate)
+{
+	m_cXY.cx += szOffset.cx;
+	m_cXY.cy += szOffset.cy;
+	SetPos(m_rcItem, bNeedInvalidate);
 }
 
 int CControlUI::GetWidth() const
@@ -740,7 +764,7 @@ CDuiString CControlUI::GetVirtualWnd() const
 
 void CControlUI::SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue)
 {
-    if( _tcscmp(pstrName, _T("pos")) == 0 ) {
+    if( _tcsicmp(pstrName, _T("pos")) == 0 ) {
         RECT rcPos = { 0 };
         LPTSTR pstr = NULL;
         rcPos.left = _tcstol(pstrValue, &pstr, 10);  ASSERT(pstr);    
@@ -752,11 +776,11 @@ void CControlUI::SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue)
         SetFixedWidth(rcPos.right - rcPos.left);
         SetFixedHeight(rcPos.bottom - rcPos.top);
     }
-   else if( _tcscmp(pstrName, _T("float")) == 0 ) {
+   else if( _tcsicmp(pstrName, _T("float")) == 0 ) {
 		CDuiString nValue = pstrValue;
 		// 动态计算相对比例
 		if(nValue.Find(',') < 0) {
-			SetFloat(_tcscmp(pstrValue, _T("true")) == 0);
+			SetFloat(_tcsicmp(pstrValue, _T("true")) == 0);
 		}
 		else {
 			TPercentInfo piFloatPercent = { 0 };
@@ -769,7 +793,7 @@ void CControlUI::SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue)
 			SetFloat(true);
 		}
 	}
-    else if( _tcscmp(pstrName, _T("padding")) == 0 ) {
+    else if( _tcsicmp(pstrName, _T("padding")) == 0 ) {
         RECT rcPadding = { 0 };
         LPTSTR pstr = NULL;
         rcPadding.left = _tcstol(pstrValue, &pstr, 10);  ASSERT(pstr);    
@@ -778,41 +802,41 @@ void CControlUI::SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue)
         rcPadding.bottom = _tcstol(pstr + 1, &pstr, 10); ASSERT(pstr);    
         SetPadding(rcPadding);
     }
-    else if( _tcscmp(pstrName, _T("bkcolor")) == 0 || _tcscmp(pstrName, _T("bkcolor1")) == 0 ) {
+    else if( _tcsicmp(pstrName, _T("bkcolor")) == 0 || _tcsicmp(pstrName, _T("bkcolor1")) == 0 ) {
         while( *pstrValue > _T('\0') && *pstrValue <= _T(' ') ) pstrValue = ::CharNext(pstrValue);
         if( *pstrValue == _T('#')) pstrValue = ::CharNext(pstrValue);
         LPTSTR pstr = NULL;
         DWORD clrColor = _tcstoul(pstrValue, &pstr, 16);
         SetBkColor(clrColor);
     }
-    else if( _tcscmp(pstrName, _T("bkcolor2")) == 0 ) {
+    else if( _tcsicmp(pstrName, _T("bkcolor2")) == 0 ) {
         while( *pstrValue > _T('\0') && *pstrValue <= _T(' ') ) pstrValue = ::CharNext(pstrValue);
         if( *pstrValue == _T('#')) pstrValue = ::CharNext(pstrValue);
         LPTSTR pstr = NULL;
         DWORD clrColor = _tcstoul(pstrValue, &pstr, 16);
         SetBkColor2(clrColor);
     }
-    else if( _tcscmp(pstrName, _T("bkcolor3")) == 0 ) {
+    else if( _tcsicmp(pstrName, _T("bkcolor3")) == 0 ) {
         while( *pstrValue > _T('\0') && *pstrValue <= _T(' ') ) pstrValue = ::CharNext(pstrValue);
         if( *pstrValue == _T('#')) pstrValue = ::CharNext(pstrValue);
         LPTSTR pstr = NULL;
         DWORD clrColor = _tcstoul(pstrValue, &pstr, 16);
         SetBkColor3(clrColor);
     }
-    else if( _tcscmp(pstrName, _T("bordercolor")) == 0 ) {
+    else if( _tcsicmp(pstrName, _T("bordercolor")) == 0 ) {
         if( *pstrValue == _T('#')) pstrValue = ::CharNext(pstrValue);
         LPTSTR pstr = NULL;
         DWORD clrColor = _tcstoul(pstrValue, &pstr, 16);
         SetBorderColor(clrColor);
     }
-    else if( _tcscmp(pstrName, _T("focusbordercolor")) == 0 ) {
+    else if( _tcsicmp(pstrName, _T("focusbordercolor")) == 0 ) {
         if( *pstrValue == _T('#')) pstrValue = ::CharNext(pstrValue);
         LPTSTR pstr = NULL;
         DWORD clrColor = _tcstoul(pstrValue, &pstr, 16);
         SetFocusBorderColor(clrColor);
     }
-    else if( _tcscmp(pstrName, _T("colorhsl")) == 0 ) SetColorHSL(_tcscmp(pstrValue, _T("true")) == 0);
-	else if( _tcscmp(pstrName, _T("bordersize")) == 0 ) {
+    else if( _tcsicmp(pstrName, _T("colorhsl")) == 0 ) SetColorHSL(_tcsicmp(pstrValue, _T("true")) == 0);
+	else if( _tcsicmp(pstrName, _T("bordersize")) == 0 ) {
 		CDuiString nValue = pstrValue;
 		if(nValue.Find(',') < 0)
 		{
@@ -831,37 +855,38 @@ void CControlUI::SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue)
 			SetBorderSize(rcPadding);
 		}
 	}
-	else if( _tcscmp(pstrName, _T("leftbordersize")) == 0 ) SetLeftBorderSize(_ttoi(pstrValue));
-	else if( _tcscmp(pstrName, _T("topbordersize")) == 0 ) SetTopBorderSize(_ttoi(pstrValue));
-	else if( _tcscmp(pstrName, _T("rightbordersize")) == 0 ) SetRightBorderSize(_ttoi(pstrValue));
-	else if( _tcscmp(pstrName, _T("bottombordersize")) == 0 ) SetBottomBorderSize(_ttoi(pstrValue));
-	else if( _tcscmp(pstrName, _T("borderstyle")) == 0 ) SetBorderStyle(_ttoi(pstrValue));
-    else if( _tcscmp(pstrName, _T("borderround")) == 0 ) {
+	else if( _tcsicmp(pstrName, _T("leftbordersize")) == 0 ) SetLeftBorderSize(_ttoi(pstrValue));
+	else if( _tcsicmp(pstrName, _T("topbordersize")) == 0 ) SetTopBorderSize(_ttoi(pstrValue));
+	else if( _tcsicmp(pstrName, _T("rightbordersize")) == 0 ) SetRightBorderSize(_ttoi(pstrValue));
+	else if( _tcsicmp(pstrName, _T("bottombordersize")) == 0 ) SetBottomBorderSize(_ttoi(pstrValue));
+	else if( _tcsicmp(pstrName, _T("borderstyle")) == 0 ) SetBorderStyle(_ttoi(pstrValue));
+    else if( _tcsicmp(pstrName, _T("borderround")) == 0 ) {
         SIZE cxyRound = { 0 };
         LPTSTR pstr = NULL;
         cxyRound.cx = _tcstol(pstrValue, &pstr, 10);  ASSERT(pstr);    
         cxyRound.cy = _tcstol(pstr + 1, &pstr, 10);    ASSERT(pstr);     
         SetBorderRound(cxyRound);
     }
-    else if( _tcscmp(pstrName, _T("bkimage")) == 0 ) SetBkImage(pstrValue);
-    else if( _tcscmp(pstrName, _T("width")) == 0 ) SetFixedWidth(_ttoi(pstrValue));
-    else if( _tcscmp(pstrName, _T("height")) == 0 ) SetFixedHeight(_ttoi(pstrValue));
-    else if( _tcscmp(pstrName, _T("minwidth")) == 0 ) SetMinWidth(_ttoi(pstrValue));
-    else if( _tcscmp(pstrName, _T("minheight")) == 0 ) SetMinHeight(_ttoi(pstrValue));
-    else if( _tcscmp(pstrName, _T("maxwidth")) == 0 ) SetMaxWidth(_ttoi(pstrValue));
-    else if( _tcscmp(pstrName, _T("maxheight")) == 0 ) SetMaxHeight(_ttoi(pstrValue));
-    else if( _tcscmp(pstrName, _T("name")) == 0 ) SetName(pstrValue);
-    else if( _tcscmp(pstrName, _T("text")) == 0 ) SetText(pstrValue);
-    else if( _tcscmp(pstrName, _T("tooltip")) == 0 ) SetToolTip(pstrValue);
-    else if( _tcscmp(pstrName, _T("userdata")) == 0 ) SetUserData(pstrValue);
-    else if( _tcscmp(pstrName, _T("enabled")) == 0 ) SetEnabled(_tcscmp(pstrValue, _T("true")) == 0);
-    else if( _tcscmp(pstrName, _T("mouse")) == 0 ) SetMouseEnabled(_tcscmp(pstrValue, _T("true")) == 0);
-	else if( _tcscmp(pstrName, _T("keyboard")) == 0 ) SetKeyboardEnabled(_tcscmp(pstrValue, _T("true")) == 0);
-    else if( _tcscmp(pstrName, _T("visible")) == 0 ) SetVisible(_tcscmp(pstrValue, _T("true")) == 0);
-    else if( _tcscmp(pstrName, _T("float")) == 0 ) SetFloat(_tcscmp(pstrValue, _T("true")) == 0);
-    else if( _tcscmp(pstrName, _T("shortcut")) == 0 ) SetShortcut(pstrValue[0]);
-    else if( _tcscmp(pstrName, _T("menu")) == 0 ) SetContextMenuUsed(_tcscmp(pstrValue, _T("true")) == 0);
-	else if( _tcscmp(pstrName, _T("virtualwnd")) == 0 ) SetVirtualWnd(pstrValue);
+    else if( _tcsicmp(pstrName, _T("bkimage")) == 0 ) SetBkImage(pstrValue);
+    else if( _tcsicmp(pstrName, _T("width")) == 0 ) SetFixedWidth(_ttoi(pstrValue));
+    else if( _tcsicmp(pstrName, _T("height")) == 0 ) SetFixedHeight(_ttoi(pstrValue));
+    else if( _tcsicmp(pstrName, _T("minwidth")) == 0 ) SetMinWidth(_ttoi(pstrValue));
+    else if( _tcsicmp(pstrName, _T("minheight")) == 0 ) SetMinHeight(_ttoi(pstrValue));
+    else if( _tcsicmp(pstrName, _T("maxwidth")) == 0 ) SetMaxWidth(_ttoi(pstrValue));
+    else if( _tcsicmp(pstrName, _T("maxheight")) == 0 ) SetMaxHeight(_ttoi(pstrValue));
+    else if( _tcsicmp(pstrName, _T("name")) == 0 ) SetName(pstrValue);
+    else if( _tcsicmp(pstrName, _T("resourcetext")) == 0 ) SetResourceText(_tcsicmp(pstrValue, _T("true")) == 0);
+    else if( _tcsicmp(pstrName, _T("text")) == 0 ) SetText(pstrValue);
+    else if( _tcsicmp(pstrName, _T("tooltip")) == 0 ) SetToolTip(pstrValue);
+    else if( _tcsicmp(pstrName, _T("userdata")) == 0 ) SetUserData(pstrValue);
+    else if( _tcsicmp(pstrName, _T("enabled")) == 0 ) SetEnabled(_tcsicmp(pstrValue, _T("true")) == 0);
+    else if( _tcsicmp(pstrName, _T("mouse")) == 0 ) SetMouseEnabled(_tcsicmp(pstrValue, _T("true")) == 0);
+	else if( _tcsicmp(pstrName, _T("keyboard")) == 0 ) SetKeyboardEnabled(_tcsicmp(pstrValue, _T("true")) == 0);
+    else if( _tcsicmp(pstrName, _T("visible")) == 0 ) SetVisible(_tcsicmp(pstrValue, _T("true")) == 0);
+    else if( _tcsicmp(pstrName, _T("float")) == 0 ) SetFloat(_tcsicmp(pstrValue, _T("true")) == 0);
+    else if( _tcsicmp(pstrName, _T("shortcut")) == 0 ) SetShortcut(pstrValue[0]);
+    else if( _tcsicmp(pstrName, _T("menu")) == 0 ) SetContextMenuUsed(_tcsicmp(pstrValue, _T("true")) == 0);
+	else if( _tcsicmp(pstrName, _T("virtualwnd")) == 0 ) SetVirtualWnd(pstrValue);
 }
 
 CControlUI* CControlUI::ApplyAttributeList(LPCTSTR pstrList)
@@ -980,22 +1005,24 @@ void CControlUI::PaintBorder(HDC hDC)
 
 				if(m_rcBorderSize.left > 0){
 					rcBorder		= m_rcItem;
-					rcBorder.right	= m_rcItem.left;
+					rcBorder.right	= rcBorder.left;
 					CRenderEngine::DrawLine(hDC,rcBorder,m_rcBorderSize.left,GetAdjustColor(m_dwBorderColor),m_nBorderStyle);
 				}
 				if(m_rcBorderSize.top > 0){
 					rcBorder		= m_rcItem;
-					rcBorder.bottom	= m_rcItem.top;
+					rcBorder.bottom	= rcBorder.top;
 					CRenderEngine::DrawLine(hDC,rcBorder,m_rcBorderSize.top,GetAdjustColor(m_dwBorderColor),m_nBorderStyle);
 				}
 				if(m_rcBorderSize.right > 0){
 					rcBorder		= m_rcItem;
-					rcBorder.left	= m_rcItem.right;
+					rcBorder.right -= 1;
+					rcBorder.left	= rcBorder.right;
 					CRenderEngine::DrawLine(hDC,rcBorder,m_rcBorderSize.right,GetAdjustColor(m_dwBorderColor),m_nBorderStyle);
 				}
 				if(m_rcBorderSize.bottom > 0){
 					rcBorder		= m_rcItem;
-					rcBorder.top	= m_rcItem.bottom;
+					rcBorder.bottom -= 1;
+					rcBorder.top	= rcBorder.bottom;
 					CRenderEngine::DrawLine(hDC,rcBorder,m_rcBorderSize.bottom,GetAdjustColor(m_dwBorderColor),m_nBorderStyle);
 				}
 			}

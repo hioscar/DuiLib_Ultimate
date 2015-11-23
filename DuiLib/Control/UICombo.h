@@ -24,6 +24,19 @@ namespace DuiLib {
 		CDuiString GetText() const;
 		void SetEnabled(bool bEnable = true);
 
+		void SetTextStyle(UINT uStyle);
+		UINT GetTextStyle() const;
+		void SetTextColor(DWORD dwTextColor);
+		DWORD GetTextColor() const;
+		void SetDisabledTextColor(DWORD dwTextColor);
+		DWORD GetDisabledTextColor() const;
+		void SetFont(int index);
+		int GetFont() const;
+		RECT GetTextPadding() const;
+		void SetTextPadding(RECT rc);
+		bool IsShowHtml();
+		void SetShowHtml(bool bShowHtml = true);
+
 		CDuiString GetDropBoxAttributeList();
 		void SetDropBoxAttributeList(LPCTSTR pstrList);
 		SIZE GetDropBoxSize() const;
@@ -41,8 +54,6 @@ namespace DuiLib {
 
 		bool Activate();
 
-		RECT GetTextPadding() const;
-		void SetTextPadding(RECT rc);
 		LPCTSTR GetNormalImage() const;
 		void SetNormalImage(LPCTSTR pStrImage);
 		LPCTSTR GetHotImage() const;
@@ -92,6 +103,7 @@ namespace DuiLib {
 
 		SIZE EstimateSize(SIZE szAvailable);
 		void SetPos(RECT rc, bool bNeedInvalidate = true);
+		void Move(SIZE szOffset, bool bNeedInvalidate = true);
 		void DoEvent(TEventUI& event);
 		void SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue);
 
@@ -103,7 +115,12 @@ namespace DuiLib {
 		CComboWnd* m_pWindow;
 
 		int m_iCurSel;
-		RECT m_rcTextPadding;
+		DWORD	m_dwTextColor;
+		DWORD	m_dwDisabledTextColor;
+		int		m_iFont;
+		UINT	m_uTextStyle;
+		RECT	m_rcTextPadding;
+		bool	m_bShowHtml;
 		CDuiString m_sDropBoxAttributes;
 		SIZE m_szDropBox;
 		UINT m_uButtonState;

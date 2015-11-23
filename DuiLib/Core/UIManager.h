@@ -230,6 +230,8 @@ namespace DuiLib {
 		CShadowUI* GetShadow();
 		void SetUseGdiplusText(bool bUse);
 		bool IsUseGdiplusText() const;
+		void SetGdiplusTextRenderingHint(int trh);
+		int GetGdiplusTextRenderingHint() const;
 
 		static HINSTANCE GetInstance();
 		static CDuiString GetInstancePath();
@@ -250,6 +252,8 @@ namespace DuiLib {
 		static void ReloadSkin();
 		static bool LoadPlugin(LPCTSTR pstrModuleName);
 		static CStdPtrArray* GetPlugins();
+
+		void DeletePtr(void* ptr);
 
 		bool UseParentResource(CPaintManagerUI* pm);
 		CPaintManagerUI* GetParentResource() const;
@@ -282,8 +286,8 @@ namespace DuiLib {
 		TFontInfo* GetFontInfo(HFONT hFont);
 
 		const TImageInfo* GetImage(LPCTSTR bitmap);
-		const TImageInfo* GetImageEx(LPCTSTR bitmap, LPCTSTR type = NULL, DWORD mask = 0);
-		const TImageInfo* AddImage(LPCTSTR bitmap, LPCTSTR type = NULL, DWORD mask = 0);
+	    const TImageInfo* GetImageEx(LPCTSTR bitmap, LPCTSTR type = NULL, DWORD mask = 0, HINSTANCE instance = NULL);
+	    const TImageInfo* AddImage(LPCTSTR bitmap, LPCTSTR type = NULL, DWORD mask = 0, HINSTANCE instance = NULL);
 		const TImageInfo* AddImage(LPCTSTR bitmap, HBITMAP hBitmap, int iWidth, int iHeight, bool bAlpha);
 		bool RemoveImage(LPCTSTR bitmap);
 		void RemoveAllImages();
@@ -358,6 +362,14 @@ namespace DuiLib {
 		bool PreMessageHandler(UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT& lRes);
 		void UsedVirtualWnd(bool bUsed);
 
+		// 样式管理
+		void AddStyle(LPCTSTR pName, LPCTSTR pStyle);
+		LPCTSTR GetStyle(LPCTSTR pName) const;
+		BOOL RemoveStyle(LPCTSTR pName);
+		const CStdStringPtrMap& GetStyles() const;
+		void RemoveAllStyle();
+		const TImageInfo* GetImageString(LPCTSTR pStrImage, LPCTSTR pStrModify = NULL);
+
 	private:
 		static CControlUI* CALLBACK __FindControlFromNameHash(CControlUI* pThis, LPVOID pData);
 		static CControlUI* CALLBACK __FindControlFromCount(CControlUI* pThis, LPVOID pData);
@@ -389,6 +401,7 @@ namespace DuiLib {
 
 		CShadowUI m_shadow;
 		bool m_bUseGdiplusText;
+		int m_trh;
 		//
 		//
 		ULONG_PTR						m_gdiplusToken;
@@ -456,6 +469,7 @@ namespace DuiLib {
 	public:
 		static CDuiString m_pStrDefaultFontName;
 		CStdPtrArray m_aTranslateAccelerator;
+		CStdStringPtrMap m_StyleHash;
 	};
 
 } // namespace DuiLib

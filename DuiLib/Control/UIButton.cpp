@@ -12,7 +12,7 @@ namespace DuiLib
 		, m_dwPushedBkColor(0)
 		, m_iBindTabIndex(-1)
 	{
-		m_uTextStyle = DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOPREFIX;
+		m_uTextStyle = DT_SINGLELINE | DT_VCENTER | DT_CENTER;
 	}
 
 	LPCTSTR CButtonUI::GetClass() const
@@ -22,7 +22,7 @@ namespace DuiLib
 
 	LPVOID CButtonUI::GetInterface(LPCTSTR pstrName)
 	{
-		if( _tcscmp(pstrName, DUI_CTR_BUTTON) == 0 ) return static_cast<CButtonUI*>(this);
+		if( _tcsicmp(pstrName, DUI_CTR_BUTTON) == 0 ) return static_cast<CButtonUI*>(this);
 		return CLabelUI::GetInterface(pstrName);
 	}
 
@@ -298,69 +298,61 @@ namespace DuiLib
 		return m_sBindTabLayoutName;
 	}
 
-	SIZE CButtonUI::EstimateSize(SIZE szAvailable)
-	{
-		if( m_cxyFixed.cy == 0 ) return CDuiSize(m_cxyFixed.cx, m_pManager->GetFontInfo(GetFont())->tm.tmHeight + 8);
-		return CControlUI::EstimateSize(szAvailable);
-	}
-
 	void CButtonUI::SetAttribute(LPCTSTR pstrName, LPCTSTR pstrValue)
 	{
-		if( _tcscmp(pstrName, _T("normalimage")) == 0 ) SetNormalImage(pstrValue);
-		else if( _tcscmp(pstrName, _T("hotimage")) == 0 ) SetHotImage(pstrValue);
-		else if( _tcscmp(pstrName, _T("pushedimage")) == 0 ) SetPushedImage(pstrValue);
-		else if( _tcscmp(pstrName, _T("focusedimage")) == 0 ) SetFocusedImage(pstrValue);
-		else if( _tcscmp(pstrName, _T("disabledimage")) == 0 ) SetDisabledImage(pstrValue);
-		else if( _tcscmp(pstrName, _T("foreimage")) == 0 ) SetForeImage(pstrValue);
-		else if( _tcscmp(pstrName, _T("hotforeimage")) == 0 ) SetHotForeImage(pstrValue);
-		else if( _tcscmp(pstrName, _T("bindtabindex")) == 0 ) BindTabIndex(_ttoi(pstrValue));
-		else if( _tcscmp(pstrName, _T("bindtablayoutname")) == 0 ) BindTabLayoutName(pstrValue);
-		else if( _tcscmp(pstrName, _T("hotbkcolor")) == 0 )
+		if( _tcsicmp(pstrName, _T("normalimage")) == 0 ) SetNormalImage(pstrValue);
+		else if( _tcsicmp(pstrName, _T("hotimage")) == 0 ) SetHotImage(pstrValue);
+		else if( _tcsicmp(pstrName, _T("pushedimage")) == 0 ) SetPushedImage(pstrValue);
+		else if( _tcsicmp(pstrName, _T("focusedimage")) == 0 ) SetFocusedImage(pstrValue);
+		else if( _tcsicmp(pstrName, _T("disabledimage")) == 0 ) SetDisabledImage(pstrValue);
+		else if( _tcsicmp(pstrName, _T("foreimage")) == 0 ) SetForeImage(pstrValue);
+		else if( _tcsicmp(pstrName, _T("hotforeimage")) == 0 ) SetHotForeImage(pstrValue);
+		else if( _tcsicmp(pstrName, _T("bindtabindex")) == 0 ) BindTabIndex(_ttoi(pstrValue));
+		else if( _tcsicmp(pstrName, _T("bindtablayoutname")) == 0 ) BindTabLayoutName(pstrValue);
+		else if( _tcsicmp(pstrName, _T("hotbkcolor")) == 0 )
 		{
 			if( *pstrValue == _T('#')) pstrValue = ::CharNext(pstrValue);
 			LPTSTR pstr = NULL;
 			DWORD clrColor = _tcstoul(pstrValue, &pstr, 16);
 			SetHotBkColor(clrColor);
 		}
-		else if( _tcscmp(pstrName, _T("pushedbkcolor")) == 0 )
+		else if( _tcsicmp(pstrName, _T("pushedbkcolor")) == 0 )
 		{
 			if( *pstrValue == _T('#')) pstrValue = ::CharNext(pstrValue);
 			LPTSTR pstr = NULL;
 			DWORD clrColor = _tcstoul(pstrValue, &pstr, 16);
 			SetPushedBkColor(clrColor);
 		}
-		else if( _tcscmp(pstrName, _T("hottextcolor")) == 0 )
+		else if( _tcsicmp(pstrName, _T("hottextcolor")) == 0 )
 		{
 			if( *pstrValue == _T('#')) pstrValue = ::CharNext(pstrValue);
 			LPTSTR pstr = NULL;
 			DWORD clrColor = _tcstoul(pstrValue, &pstr, 16);
 			SetHotTextColor(clrColor);
 		}
-		else if( _tcscmp(pstrName, _T("pushedtextcolor")) == 0 )
+		else if( _tcsicmp(pstrName, _T("pushedtextcolor")) == 0 )
 		{
 			if( *pstrValue == _T('#')) pstrValue = ::CharNext(pstrValue);
 			LPTSTR pstr = NULL;
 			DWORD clrColor = _tcstoul(pstrValue, &pstr, 16);
 			SetPushedTextColor(clrColor);
 		}
-		else if( _tcscmp(pstrName, _T("focusedtextcolor")) == 0 )
+		else if( _tcsicmp(pstrName, _T("focusedtextcolor")) == 0 )
 		{
 			if( *pstrValue == _T('#')) pstrValue = ::CharNext(pstrValue);
 			LPTSTR pstr = NULL;
 			DWORD clrColor = _tcstoul(pstrValue, &pstr, 16);
 			SetFocusedTextColor(clrColor);
 		}
-		else if( _tcscmp(pstrName, _T("multiline")) == 0 )
+		else if( _tcsicmp(pstrName, _T("noprefix")) == 0 )
 		{
-			if( _tcscmp(pstrValue, _T("true")) == 0)
+			if( _tcsicmp(pstrValue, _T("true")) == 0)
 			{
-				m_uTextStyle = m_uTextStyle & ~DT_SINGLELINE;
-				m_uTextStyle |= DT_WORDBREAK;
+				m_uTextStyle |= DT_NOPREFIX;
 			}
 			else
 			{
-				m_uTextStyle = m_uTextStyle & ~DT_WORDBREAK;
-				m_uTextStyle |= DT_SINGLELINE;
+				m_uTextStyle = m_uTextStyle & ~DT_NOPREFIX;
 			}
 		}
 		else CLabelUI::SetAttribute(pstrName, pstrValue);
@@ -375,8 +367,10 @@ namespace DuiLib
 
 		if( m_dwTextColor == 0 ) m_dwTextColor = m_pManager->GetDefaultFontColor();
 		if( m_dwDisabledTextColor == 0 ) m_dwDisabledTextColor = m_pManager->GetDefaultDisabledColor();
+		
+		CDuiString sText = GetText();
+		if( sText.IsEmpty() ) return;
 
-		if( m_sText.IsEmpty() ) return;
 		int nLinks = 0;
 		RECT rc = m_rcItem;
 		rc.left += m_rcTextPadding.left;
@@ -394,10 +388,10 @@ namespace DuiLib
 			clrColor = GetFocusedTextColor();
 
 		if( m_bShowHtml )
-			CRenderEngine::DrawHtmlText(hDC, m_pManager, rc, m_sText, clrColor, \
+			CRenderEngine::DrawHtmlText(hDC, m_pManager, rc, sText, clrColor, \
 			NULL, NULL, nLinks, m_uTextStyle);
 		else
-			CRenderEngine::DrawText(hDC, m_pManager, rc, m_sText, clrColor, \
+			CRenderEngine::DrawText(hDC, m_pManager, rc, sText, clrColor, \
 			m_iFont, m_uTextStyle);
 	}
 
